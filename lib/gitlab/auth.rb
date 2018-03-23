@@ -52,24 +52,22 @@ module Gitlab
 
           return if user && !user.active?
 
-          authenticators = []
-
           if user
+            authenticators = []
             authenticators << Gitlab::Auth::OAuth::Provider.authentication(user, 'database')
 
             # Add authenticators for all identities if user is not nil
             user&.identities&.each do |identity|
               authenticators << Gitlab::Auth::OAuth::Provider.authentication(user, identity.provider)
+
+            authenticators.compact!
+            user if authenticators.find { |auth| auth.login(login, password) }
             end
           else
             # If no user is provided, try LDAP.
             #   LDAP users are only authenticated via LDAP
-            authenticators << Gitlab::Auth::LDAP::Authentication
+            Gitlab::Auth::LDAP::Authentication.login(login, password)
           end
-
-          authenticators.compact!
-
-          user if authenticators.find { |auth| auth.login(login, password) }
         end
       end
 
